@@ -9,15 +9,12 @@ url: "https://github.com/MrSlopster/app-kx-bridge"
 arch:
   - aarch64
   - amd64
-  - armv7
-  - armhf
-  - i386
 init: false
 startup: application
 boot: auto
 host_network: false
 map:
-  - addon_config:rw
+  - app_config:rw
 ports:
   "7125/tcp": 7125
   "7126/tcp": 7126
@@ -32,7 +29,7 @@ ports_description:
   "7128/tcp": "Bridge / Moonraker API - printer 4 (multi-printer)"
   "7129/tcp": "Bridge / Moonraker API - printer 5 (multi-printer)"
   "7130/tcp": "Bridge / Moonraker API - printer 6 (multi-printer)"
-webui: "http://[HOST]:[PORT:7125/tcp]"
+webui: "http://[HOST]:[PORT:7125]"
 # Only the printer connection is managed here (add-on options are the source of
 # truth and are re-applied on every restart). All other settings - AMS/print
 # behaviour, Spoolman, filament profiles, dry presets, multi-printer - are
