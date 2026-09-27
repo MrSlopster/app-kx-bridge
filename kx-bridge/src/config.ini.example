@@ -1,0 +1,110 @@
+# KX-Bridge Konfigurationsdatei
+# Kopiere diese Datei nach config.ini und trage deine Werte ein:
+#   cp config.ini.example config.ini
+#
+# Credentials automatisch eintragen:
+#   python3 tools/fetch_credentials.py --ip 192.168.x.x --write-config
+# Alternativ (Windows, ohne Drucker-IP bekannt):
+#   extract_credentials.exe --write-env  (liest aus laufendem AnycubicSlicerNext)
+
+[connection]
+# IP-Adresse des Druckers im lokalen Netzwerk
+printer_ip   = 192.168.x.x
+
+# MQTT-Port (Anycubic Kobra X Standard: 9883)
+mqtt_port    = 9883
+
+# MQTT-Zugangsdaten (druckerspezifisch, beginnt mit "user")
+username     = userXXXXXXXXXX
+password     = XXXXXXXXXXXXXXX
+
+# Geräte-ID (32-stelliger Hex-String, druckerspezifisch)
+device_id    = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Modell-ID (Kobra X Standard: 20030)
+mode_id      = 20030
+
+[print]
+# Standard-AMS-Slot für Einfarbdruck (auto = alle belegten Slots, 0-3 = fixer Slot)
+default_ams_slot = auto
+
+# Auto-Leveling vor jedem Druck (1 = an, 0 = aus)
+auto_leveling    = 1
+
+# Kamera-Stream bei Druckstart automatisch einschalten (1 = an, 0 = aus)
+camera_on_print  = 0
+
+# Warnung vor Druck von Web-Uploads (1 = an, 0 = aus)
+web_upload_warning = 1
+
+[bridge]
+# Poll-Intervall in Sekunden
+poll_interval    = 3
+
+# ─── Spoolman (optional) ───────────────────────────────────────────────────────
+# Verfolgt den Filamentverbrauch je AMS-Slot und bucht ihn automatisch vom
+# passenden Spool ab (mm-basiert, wie Moonraker; Spoolman rechnet mm→Gramm).
+# [spoolman]
+# # Server-URL der Spoolman-Instanz (aus Sicht des Bridge-Containers erreichbar):
+# server    = http://192.168.x.x:7912
+# # 0 = nur am Druckende abbuchen, >0 = alle N Sekunden während des Drucks:
+# sync_rate = 0
+#
+# Die AMS-Slot → Spool-Zuordnung wird in der Weboberfläche gesetzt und je Drucker
+# automatisch persistiert (nicht von Hand eintragen):
+#   Einzeldrucker : [spoolman]   slot_spools = 0:42,1:17
+#   Multi-Printer : [spoolman_1] slot_spools = 0:42,1:17
+#                   [spoolman_2] slot_spools = 0:5,1:6
+
+# ─── Multi-Printer (optional) ──────────────────────────────────────────────────
+# Mehrere Drucker können als [printer_1], [printer_2], … definiert werden.
+# Jede Bridge-Instanz verbindet sich mit einem Drucker (je eigener Port).
+# bridge_url zeigt auf die jeweilige Bridge-Instanz (für den /kx/printers-Endpunkt).
+# Die [connection]-Sektion wird weiterhin als Fallback für diese Instanz verwendet.
+#
+# Beispiel:
+# [printer_1]
+# name         = Kobra X Links
+# bridge_url   = http://192.168.178.95:7125
+# printer_ip   = 192.168.178.95
+# mqtt_port    = 9883
+# username     = userXXXXXXXXXX
+# password     = XXXXXXXXXXXXXXX
+# device_id    = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# mode_id      = 20030
+#
+# [printer_2]
+# name         = Kobra X Rechts
+# bridge_url   = http://192.168.178.96:7125
+# printer_ip   = 192.168.178.96
+# mqtt_port    = 9883
+# username     = userYYYYYYYYYY
+# password     = YYYYYYYYYYYYYYY
+# device_id    = yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+# mode_id      = 20030
+
+[ace_dry_presets]
+# Vordefinierte Dry-Set Presets (Temp in °C, Dauer in Sekunden)
+pla_temp = 45
+pla_duration_sec = 14400
+pla_plus_temp = 45
+pla_plus_duration_sec = 14400
+petg_temp = 50
+petg_duration_sec = 14400
+tpu_temp = 55
+tpu_duration_sec = 14400
+abs_asa_temp = 45
+abs_asa_duration_sec = 28800
+pa_pc_temp = 55
+pa_pc_duration_sec = 43200
+
+# Custom Presets (Name + Temp + Dauer)
+custom_1_name = Custom 1
+custom_1_temp = 45
+custom_1_duration_sec = 14400
+custom_2_name = Custom 2
+custom_2_temp = 45
+custom_2_duration_sec = 14400
+custom_3_name = Custom 3
+custom_3_temp = 45
+custom_3_duration_sec = 14400

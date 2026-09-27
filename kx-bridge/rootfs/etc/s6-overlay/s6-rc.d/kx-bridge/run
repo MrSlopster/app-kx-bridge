@@ -1,0 +1,46 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# KX-Bridge - Home Assistant add-on entrypoint
+# Wires HA add-on options onto KX-Bridge's env-var interface and points the
+# app at persistent, user-editable storage before launching the bridge.
+# ==============================================================================
+set -e
+
+CONFIG_DIR=/config        # addon_config map -> user-editable + persistent
+DATA_DIR=/data/data       # private persistent runtime state (SQLite, gcodes)
+
+mkdir -p "${CONFIG_DIR}" "${DATA_DIR}"
+
+# Drop a reference template the first time so users know the ini layout
+if [ ! -f "${CONFIG_DIR}/config.ini.example" ] && [ -f /app/config.ini.example ]; then
+    cp /app/config.ini.example "${CONFIG_DIR}/config.ini.example"
+fi
+
+# The app reads/writes <base>/config/config.ini (web UI persists Spoolman maps,
+# filament profiles, presets and multi-printer sections there). Redirect that to
+# the persistent, user-editable /config so nothing is lost across restarts.
+rm -rf /app/config
+ln -sf "${CONFIG_DIR}" /app/config
+
+export KX_DATA_DIR="${DATA_DIR}"
+export KX_IN_DOCKER=1
+
+# ---- Connection settings (env overrides config.ini; only set when provided) ---
+# These add-on options are the source of truth and are re-applied on every
+# restart. Everything else is managed in the web UI (-> /config/config.ini).
+bashio::config.has_value 'printer_ip'     && export PRINTER_IP="$(bashio::config 'printer_ip')"
+bashio::config.has_value 'mqtt_port'      && export MQTT_PORT="$(bashio::config 'mqtt_port')"
+bashio::config.has_value 'mqtt_username'  && export MQTT_USERNAME="$(bashio::config 'mqtt_username')"
+bashio::config.has_value 'mqtt_password'  && export MQTT_PASSWORD="$(bashio::config 'mqtt_password')"
+bashio::config.has_value 'device_id'      && export DEVICE_ID="$(bashio::config 'device_id')"
+bashio::config.has_value 'mode_id'        && export MODE_ID="$(bashio::config 'mode_id')"
+bashio::config.has_value 'bridge_host_ip' && export BRIDGE_HOST_IP="$(bashio::config 'bridge_host_ip')"
+
+if bashio::config.has_value 'printer_ip'; then
+    bashio::log.info "Starting KX-Bridge for printer $(bashio::config 'printer_ip') on port 7125 ..."
+else
+    bashio::log.warning "No printer_ip set in the add-on options - configure it, or manage printers via /config/config.ini"
+fi
+
+cd /app
+exec python3 kobrax_moonraker_bridge.py

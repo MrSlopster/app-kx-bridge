@@ -1,0 +1,441 @@
+:root{
+  color-scheme:dark; /* native Form-Controls (select) im Webview dunkel rendern */
+  --bg:#1a1a1f;--card:#24242c;--raised:#2e2e3a;--border:#3a3a4a;
+  --txt:#f0f0f5;--txt2:#8888aa;--accent:#00c8ff;--accent2:#ff6b35;
+  --ok:#4cde80;--err:#ff4d6d;--warn:#ffb020;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono","Fira Code",monospace;
+}
+[data-theme=light]{
+  color-scheme:light;
+  --bg:#f0f0f5;--card:#fff;--raised:#e8e8f0;--border:#d0d0e0;
+  --txt:#1a1a2e;--txt2:#666680;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:14px;min-height:100vh;display:flex;flex-direction:column}
+a{color:var(--accent);text-decoration:none}
+/* select/option-Farben explizit setzen — OrcaSlicers Device-Tab-Webview erbt
+   sie sonst nicht und rendert weiße Schrift auf weißem Grund (Issue #29).
+   Einheitliches Styling für alle Dropdowns im gesamten UI. */
+select{
+  background:var(--raised)!important;
+  color:var(--txt)!important;
+  border:1px solid var(--border)!important;
+  border-radius:8px!important;
+  padding:6px 10px!important;
+  font-size:13px!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23888' d='M6 8L0 0h12z'/%3E%3C/svg%3E")!important;
+  background-repeat:no-repeat!important;
+  background-position:right 10px center!important;
+  padding-right:28px!important;
+  cursor:pointer!important;
+  outline:none!important;
+  box-sizing:border-box!important;
+}
+select:focus{border-color:var(--accent)!important;box-shadow:0 0 0 2px rgba(0,200,255,0.18)!important}
+select option{background:var(--card)!important;color:var(--txt)!important}
+
+/* Einheitliches Styling für Text/Number-Inputs */
+input[type=text],input[type=number],input[type=url],input[type=password],input[type=email],input[type=search]{
+  background:var(--raised);
+  color:var(--txt);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:6px 10px;
+  font-size:13px;
+  outline:none;
+  box-sizing:border-box;
+}
+input[type=text]:focus,input[type=number]:focus,input[type=url]:focus,
+input[type=password]:focus,input[type=email]:focus,input[type=search]:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 2px rgba(0,200,255,0.18);
+}
+input::placeholder{color:var(--txt2);opacity:1}
+
+/* ── HEADER ── */
+header{background:var(--card);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;padding:0 20px;height:52px;
+  position:sticky;top:0;z-index:100}
+.logo{font-size:18px;font-weight:700;color:var(--accent);letter-spacing:-.02em}
+.hname{font-size:13px;color:var(--txt2)}
+.hbadge{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+  padding:4px 10px;border-radius:20px;background:var(--raised);color:var(--txt2);
+  text-transform:uppercase;letter-spacing:.04em}
+.hbadge.printing{background:#0d2d1a;color:var(--ok)}
+.hbadge.complete{background:#0d1f38;color:#60b0ff}
+.hbadge.error{background:#2d0d0d;color:var(--err)}
+.hbadge .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.hbadge.printing .dot{animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.theme-btn{background:none;border:1px solid var(--border);color:var(--txt2);
+  border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;transition:.15s}
+.theme-btn:hover{border-color:var(--accent);color:var(--accent)}
+.conn-btn{border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;
+  font-weight:600;border:none;transition:.15s}
+.conn-btn.disconnected{background:var(--accent);color:#fff}
+.conn-btn.disconnected:hover{opacity:.85}
+.conn-btn.connected{background:transparent;border:1px solid var(--border);color:var(--txt2)}
+.conn-btn.connected:hover{border-color:#e05;color:#e05}
+
+/* ── LAYOUT ── */
+.layout{display:flex;flex:1;min-height:0}
+nav.sidebar{width:200px;background:var(--card);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;padding:12px 8px;gap:2px;flex-shrink:0}
+.nav-btn{background:none;border:none;color:var(--txt2);text-align:left;
+  padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13px;
+  display:flex;align-items:center;gap:10px;transition:.12s;width:100%}
+.nav-btn:hover{background:var(--raised);color:var(--txt)}
+.nav-btn.active{background:var(--raised);color:var(--accent)}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+main{flex:1;overflow-y:auto;padding:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+
+/* ── CARD ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:18px;transition:box-shadow .15s,transform .15s;container-type:inline-size}
+.card:hover{box-shadow:0 4px 20px rgba(0,0,0,.3);transform:translateY(-1px)}
+.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt2);
+  margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title span{font-size:14px}
+
+/* ── DASHBOARD FREE GRID (GridStack) ── */
+/* .grid-stack-item-content is already position:absolute + fills the cell
+   (GridStack's own CSS). The card inside just needs to fill that box — it
+   must NOT be position:absolute itself, or it can sit above/intercept
+   GridStack's resize-handle hit area and drag listeners. */
+/* Doc pattern: the card fills its cell; content scrolls if the user resizes
+   the cell smaller than the content needs. */
+.grid-stack-item-content>.card{width:100%;height:100%;margin:0;overflow-y:auto;overflow-x:hidden;box-sizing:border-box}
+/* .card:hover{transform:translateY(-1px)} creates a new containing block right
+   as the user starts dragging, throwing off GridStack's position math. Kill
+   the hover transform for dashboard cards specifically. */
+.grid-stack-item-content>.card:hover{transform:none}
+/* Edit mode: dashed outline + grab cursor on each item */
+#dash-grid.editing .grid-stack-item-content>.card{cursor:grab;
+  outline:1px dashed var(--accent);outline-offset:-1px;user-select:none}
+/* GridStack placeholder styled to theme */
+.grid-stack>.grid-stack-placeholder>.placeholder-content{
+  background:rgba(120,150,255,.12);border:1px dashed var(--accent);border-radius:12px}
+/* Resize handles only visible in edit mode */
+#dash-grid:not(.editing) .ui-resizable-handle{display:none!important}
+/* Per-card controls (hide button) */
+.dash-card-controls{display:none;position:absolute;top:8px;right:8px;gap:4px;z-index:6}
+#dash-grid.editing .dash-card-controls{display:flex}
+.dash-card-ctrl-btn{width:24px;height:24px;border-radius:6px;border:1px solid var(--border);
+  background:var(--raised);color:var(--txt2);cursor:pointer;font-size:12px;
+  display:flex;align-items:center;justify-content:center;line-height:1}
+.dash-card-ctrl-btn:hover{color:var(--accent);border-color:var(--accent)}
+#dash-hidden-bar{display:none;flex-wrap:wrap;gap:8px;margin-top:12px;padding:10px;
+  border:1px dashed var(--border);border-radius:10px}
+#dash-hidden-bar.show{display:flex}
+.dash-hidden-chip{display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:12px;
+  background:var(--raised);border:1px solid var(--border);border-radius:20px;color:var(--txt2)}
+.dash-hidden-chip button{background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;padding:0}
+
+@media(max-width:768px){
+  #dash-toolbar{display:none}
+}
+
+/* ── HERO ── */
+.hero{grid-column:1/-1;display:grid;grid-template-columns:1fr 320px;gap:16px}
+@media(max-width:900px){.hero{grid-template-columns:1fr}}
+.cam-wrap{background:#0a0a0e;border-radius:10px;overflow:hidden;
+  min-height:180px;max-height:320px;display:flex;align-items:center;justify-content:center;position:relative}
+.cam-wrap img,.cam-wrap video{width:100%;max-height:320px;height:auto;display:block;object-fit:contain;
+  -webkit-user-drag:none;user-select:none}
+/* Inside the dashboard grid the camera card can be resized taller than the
+   default 320px cap — flex column: title row keeps its height, cam view
+   flexes to fill whatever cell height the user chose. */
+.grid-stack-item-content>#card-camera{display:flex;flex-direction:column}
+.grid-stack-item-content .cam-wrap{flex:1;min-height:0;max-height:none}
+.grid-stack-item-content .cam-wrap img,.grid-stack-item-content .cam-wrap video{max-height:100%;height:100%}
+.cam-placeholder{color:var(--txt2);font-size:13px;text-align:center;padding:20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cam-spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.15);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;display:none}
+.cam-overlay{position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(0,0,0,.75));padding:14px}
+.cam-toggle{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.5);
+  border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;
+  padding:6px 10px;cursor:pointer;font-size:12px;backdrop-filter:blur(4px)}
+.cam-toggle:hover{background:rgba(0,0,0,.7)}
+
+/* ── PROGRESS ── */
+/* Same pattern as #card-camera above: without this, shrinking the tile's
+   height just clips the lower content (time-grid/filename/buttons) outside
+   the visible area instead of making it scrollable (Issue #97). */
+.grid-stack-item-content>#card-progress{display:flex;flex-direction:column;min-height:0}
+.grid-stack-item-content>#card-progress>*{flex-shrink:0}
+.hero-info{display:flex;flex-direction:column;gap:12px}
+.pct-big{font-size:52px;font-weight:700;line-height:1;color:var(--txt)}
+.pct-big small{font-size:20px;font-weight:400;color:var(--txt2)}
+.progress-bar{height:8px;background:var(--raised);border-radius:4px;overflow:hidden;margin:4px 0}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),#0080cc);
+  border-radius:4px;transition:width .6s ease}
+.meta-row{display:flex;justify-content:space-between;font-size:12px;color:var(--txt2)}
+.layer-badge{background:var(--raised);border-radius:6px;padding:4px 8px;
+  font-family:var(--mono);font-size:12px;color:var(--txt)}
+.fname{font-size:12px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:var(--raised);border-radius:6px;padding:6px 8px}
+
+/* ── PRINT CONTROLS ── */
+.ctrl-btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;
+  cursor:pointer;transition:opacity .15s,transform .1s;white-space:nowrap}
+.btn:hover{opacity:.85;transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn-start{background:var(--ok);color:#0d2010}
+.btn-pause{background:var(--raised);color:var(--txt);border:1px solid var(--border)}
+.btn-resume{background:#0d2d1a;color:var(--ok);border:1px solid var(--ok)}
+.btn-skip{background:var(--raised);color:var(--warn);border:1px solid var(--warn)}
+.btn-cancel{background:#2d0d0d;color:var(--err);border:1px solid var(--err)}
+.btn-accent{background:var(--accent);color:#001a24}
+.btn-sm{padding:7px 12px;font-size:12px}
+.spd-btn{flex:1;border:1.5px solid var(--border);background:var(--raised);color:var(--txt);
+  border-radius:10px;padding:14px 8px;font-size:13px;font-weight:600;cursor:pointer;
+  transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:4px}
+.spd-btn:hover{border-color:var(--accent);color:var(--accent)}
+.spd-btn.spd-active{border-color:var(--accent);background:rgba(0,200,255,.12);color:var(--accent)}
+.spd-btn .spd-icon{font-size:22px}
+.spd-bar{height:4px;border-radius:2px;background:var(--border);margin-top:10px;overflow:hidden}
+.spd-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width .3s}
+.h-power-btn{border:1.5px solid var(--border);background:var(--raised);color:var(--txt2);
+  border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.h-power-btn:hover{opacity:.85}
+/* Shows the action a click would perform, not the current state - green
+   "An" while the printer is off (click turns it on), red "Aus" while it's
+   on (click turns it off). */
+.h-power-btn.h-power-can-on{border-color:var(--ok);background:rgba(76,222,128,.12);color:var(--ok)}
+.h-power-btn.h-power-can-off{border-color:var(--err);background:rgba(255,77,109,.12);color:var(--err)}
+
+/* ── TIME CARDS ── */
+.time-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+.time-block{background:var(--raised);border-radius:10px;padding:10px 12px}
+.time-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--txt2);margin-bottom:4px}
+.time-val{font-size:20px;font-weight:700;font-family:var(--mono);color:var(--txt)}
+/* ── TEMPS ── */
+.temp-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.temp-card-inner{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@container (max-width:340px){
+  .temp-card-inner{grid-template-columns:1fr}
+  .temp-val{font-size:24px}
+  .temp-edit{flex-wrap:wrap}
+  .temp-input{width:100%}
+}
+.temp-block{background:var(--raised);border-radius:10px;padding:14px;position:relative}
+.temp-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--txt2);margin-bottom:6px}
+.temp-row{display:flex;align-items:baseline;gap:6px}
+.temp-val{font-size:30px;font-weight:700;font-family:var(--mono)}
+.temp-unit{font-size:14px;color:var(--txt2)}
+.temp-target{font-size:11px;color:var(--txt2);margin-top:2px}
+.temp-arc{position:absolute;top:12px;right:12px}
+.temp-edit{display:flex;gap:6px;margin-top:10px}
+.temp-input{background:var(--bg);border:1px solid var(--border);color:var(--txt);
+  border-radius:6px;padding:5px 8px;font-size:13px;font-family:var(--mono);width:70px}
+.temp-input:focus{outline:none;border-color:var(--accent)}
+.chart-wrap{margin-top:12px}
+canvas.tchart{width:100%;height:60px;display:block;border-radius:6px;background:var(--raised)}
+
+/* ── MOTION ── */
+.joypad{display:grid;grid-template-columns:repeat(3,52px);
+  grid-template-rows:repeat(3,52px);gap:6px;justify-content:center;margin:8px auto}
+.joy{background:var(--raised);border:1px solid var(--border);color:var(--txt);
+  border-radius:10px;font-size:18px;cursor:pointer;transition:.12s;
+  display:flex;align-items:center;justify-content:center}
+.joy:hover{background:var(--accent);color:#001a24;border-color:var(--accent)}
+.joy:active{transform:scale(.93)}
+.joy.home{font-size:14px;background:var(--bg)}
+.step-btns{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.step-btn{background:var(--raised);border:1px solid var(--border);color:var(--txt2);
+  border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;transition:.12s}
+.step-btn.active,.step-btn:hover{background:var(--accent);color:#001a24;border-color:var(--accent)}
+.home-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;justify-content:center}
+
+/* ── AMS ── */
+.ams-slots{display:flex;flex-direction:column;gap:12px}
+.ams-box-group{}
+.ams-box-label{font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;padding-left:2px}
+.ams-box-slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ams-slot{background:var(--raised);border-radius:10px;padding:10px;text-align:center;
+  border:2px solid transparent;transition:.2s;position:relative}
+.ams-slot.active{border-color:var(--slot-color,var(--accent));
+  box-shadow:0 0 12px rgba(var(--slot-rgb,0,200,255),.3)}
+.ams-slot.loaded{border-color:var(--ok)!important;
+  box-shadow:0 0 0 2px rgba(64,220,120,.35),0 0 14px rgba(64,220,120,.35)}
+.ams-slot.loading{border-color:var(--ok)!important;animation:amsPulseGreen 1s ease-in-out infinite}
+.ams-slot.unloading{border-color:var(--err)!important;animation:amsPulseRed 1s ease-in-out infinite}
+@keyframes amsPulseGreen{0%{box-shadow:0 0 0 0 rgba(64,220,120,.55)}50%{box-shadow:0 0 0 4px rgba(64,220,120,.25),0 0 18px rgba(64,220,120,.45)}100%{box-shadow:0 0 0 0 rgba(64,220,120,.55)}}
+@keyframes amsPulseRed{0%{box-shadow:0 0 0 0 rgba(230,80,80,.55)}50%{box-shadow:0 0 0 4px rgba(230,80,80,.25),0 0 18px rgba(230,80,80,.45)}100%{box-shadow:0 0 0 0 rgba(230,80,80,.55)}}
+.ams-slot-bridge{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  border:1px dashed var(--border);background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
+  color:var(--txt2);min-height:106px}
+.ams-slot-bridge .bridge-chip{width:58px;height:58px;border:1px solid rgba(255,255,255,.14);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04);color:var(--txt2);
+  font-size:13px;font-weight:700;letter-spacing:.04em}
+.slot-circle{width:36px;height:36px;border-radius:50%;margin:0 auto 6px;border:2px solid rgba(255,255,255,.15)}
+.slot-label{font-size:11px;color:var(--txt2);font-family:var(--mono)}
+.slot-material{font-size:12px;font-weight:600;margin-bottom:2px}
+
+/* ── LIGHT + FAN ── */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.toggle-label{font-size:13px;font-weight:600}
+.toggle{position:relative;width:44px;height:24px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{width:44px;height:24px;background:var(--raised);border-radius:12px;
+  border:1px solid var(--border);transition:.25s;display:block}
+.toggle input:checked+.toggle-track{background:var(--accent)}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;
+  background:#fff;border-radius:50%;transition:.25s;pointer-events:none}
+.toggle input:checked~.toggle-thumb{transform:translateX(20px)}
+.slider-row{display:flex;align-items:center;gap:10px;margin-top:8px}
+.slider-label{font-size:12px;color:var(--txt2);width:80px}
+.slider{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;
+  background:var(--raised);outline:none;cursor:pointer}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;
+  border-radius:50%;background:var(--accent);cursor:pointer;transition:.1s}
+.slider::-webkit-slider-thumb:hover{transform:scale(1.2)}
+.slider-val{font-family:var(--mono);font-size:12px;color:var(--txt);width:30px;text-align:right}
+
+/* ── CONSOLE ── */
+.console{background:#0a0a0e;border-radius:8px;padding:10px;font-family:var(--mono);
+  font-size:11px;color:#8888aa;overflow-y:auto;line-height:1.6}
+.console .ts{color:#444;margin-right:6px}
+.console .msg-info{color:#8888aa}
+.console .msg-ok{color:var(--ok)}
+.console .msg-err{color:var(--err)}
+.console .msg-warn{color:var(--warn)}
+
+/* ── PANELS ── */
+.panel{display:none}
+.panel.active{display:block}
+
+/* ── SETTINGS (Master-Detail) ── */
+.settings-wrap{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start}
+.settings-cats{display:flex;flex-direction:column;gap:4px;position:sticky;top:12px}
+.set-cat{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;
+  border:1px solid transparent;background:var(--raised);color:var(--txt2);cursor:pointer;
+  font-size:13px;text-align:left;transition:background .15s,color .15s}
+.set-cat:hover{color:var(--txt)}
+.set-cat.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.set-group{display:none}
+.set-group.active{display:block}
+.set-group .card{margin-bottom:14px}
+@media(max-width:768px){
+  .settings-wrap{grid-template-columns:1fr}
+  .settings-cats{flex-direction:row;flex-wrap:wrap;position:static;overflow-x:auto}
+  .set-cat{flex:1;min-width:auto;justify-content:center;padding:8px 6px;font-size:12px}
+  .set-cat .nav-text{display:inline}
+}
+
+/* ── BROWSER SUB-TABS (uploaded vs. on-printer files) ── */
+.browser-tab.active{color:var(--accent);border-bottom-color:var(--accent)!important}
+.browser-tab:hover{color:var(--txt)}
+.browser-group{display:none}
+.browser-group.active{display:block}
+
+/* ── FILE BROWSER UPLOAD ZONE ── */
+#store-upload-zone{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:18px 12px;margin-bottom:14px;
+  border:2px dashed var(--border);border-radius:10px;
+  background:var(--raised);color:var(--txt2);
+  cursor:pointer;transition:border-color .15s,background .15s;
+  font-size:13px;text-align:center;user-select:none;
+}
+#store-upload-zone:hover{border-color:var(--accent);background:rgba(0,200,255,.06);color:var(--txt)}
+#store-upload-zone.drag-over{border-color:var(--accent);background:rgba(0,200,255,.12);color:var(--accent)}
+#store-upload-icon{font-size:22px;line-height:1}
+.upload-status-busy{color:var(--txt2)}
+.upload-status-ok{color:var(--ok)}
+.upload-status-err{color:var(--err)}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);
+  z-index:200;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:14px;
+  width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:24px;
+  display:flex;flex-direction:column;gap:18px}
+.modal-header{display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:15px;font-weight:700;color:var(--txt)}
+.modal-close{background:none;border:none;color:var(--txt2);font-size:20px;
+  cursor:pointer;padding:4px 8px;border-radius:6px}
+.modal-close:hover{background:var(--raised);color:var(--txt)}
+.modal-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--txt2);margin-bottom:6px;margin-top:4px}
+.modal-field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.modal-field label{font-size:12px;color:var(--txt2)}
+.modal-field input{background:var(--raised);border:1px solid var(--border);
+  border-radius:7px;color:var(--txt);padding:7px 10px;font-size:13px;width:100%}
+.modal-field input:focus{outline:none;border-color:var(--accent)}
+.set-row{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.set-row label{font-size:12px;color:var(--txt2)}
+.poll-btns{display:flex;gap:8px}
+.poll-btn{flex:1;padding:7px;background:var(--raised);border:1px solid var(--border);
+  border-radius:7px;color:var(--txt2);cursor:pointer;font-size:13px;transition:all .15s}
+.poll-btn.active{background:var(--accent);border-color:var(--accent);color:#000;font-weight:600}
+.update-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.update-status{font-size:12px;color:var(--txt2);flex:1;min-width:0}
+.modal-save{width:100%;padding:10px;background:var(--accent);border:none;
+  border-radius:8px;color:#000;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px}
+.modal-save:hover{opacity:.88}
+
+/* ── BOTTOM NAV (mobile) ── */
+nav.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;
+  background:var(--card);border-top:1px solid var(--border);
+  justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
+.bnav-btn{background:none;border:none;color:var(--txt2);display:flex;
+  flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:10px;padding:4px 8px}
+.bnav-btn.active{color:var(--accent)}
+.bnav-icon{font-size:20px}
+
+/* ── Tablet (769–1100px): schmale Sidebar ── */
+@media(min-width:769px) and (max-width:1100px){
+  nav.sidebar{width:52px;padding:12px 4px}
+  .nav-btn .nav-text{display:none}
+  .nav-btn{justify-content:center;padding:10px}
+  .nav-icon{width:auto}
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .hero{grid-template-columns:1fr}
+}
+
+/* ── Mobile (≤768px): Bottom-Nav, 1-Spalte ── */
+@media(max-width:768px){
+  nav.sidebar{display:none}
+  nav.bottom-nav{display:flex}
+  main{padding:10px;padding-bottom:72px}
+
+  /* Header kompakt */
+  header{padding:0 12px;gap:8px}
+  .hname{display:none}
+
+  /* 1-Spalten-Grid, full-width spans funktionieren weiterhin */
+  .grid{grid-template-columns:1fr;gap:12px}
+
+  /* Hero: Kamera über Info */
+  .hero{grid-template-columns:1fr}
+  .cam-wrap{max-height:220px}
+
+  /* Temp-Pair und Temp-Card übereinander */
+  .temp-pair{grid-template-columns:1fr}
+  .temp-card-inner{grid-template-columns:1fr}
+
+  /* AMS: 2 Spalten auf kleinen Screens */
+  .ams-box-slots{grid-template-columns:repeat(2,1fr)}
+
+  /* Joypad etwas kleiner */
+  .joypad{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:5px}
+  .joy{font-size:16px}
+
+  /* Buttons größere Touch-Targets */
+  .btn{padding:10px 14px;font-size:13px}
+  .btn-sm{padding:8px 12px}
+  .step-btn{padding:8px 12px;font-size:13px}
+
+  /* Modal vollbreite auf kleinen Screens */
+  .modal-box{padding:16px;border-radius:10px}
+  .poll-btns{gap:6px}
+}

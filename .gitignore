@@ -1,0 +1,14 @@
+# Generated / runtime cruft
+**/__pycache__/
+*.py[cod]
+.omc/
+**/.omc/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# Local build/test artifacts
+*.tar
+*.log

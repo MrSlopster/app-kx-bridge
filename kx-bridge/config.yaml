@@ -1,0 +1,56 @@
+---
+name: KX-Bridge
+version: "0.9.30-nightly17"
+slug: kx_bridge
+description: >-
+  Moonraker-compatible bridge for the Anycubic Kobra X. Control the printer
+  from OrcaSlicer/Fluidd/Mainsail-style clients over MQTT - no Klipper, no Pi.
+url: "https://gitea.it-drui.de/viewit/KX-Bridge-Release"
+codenotary: ""
+arch:
+  - aarch64
+  - amd64
+  - armv7
+  - armhf
+  - i386
+init: false
+startup: application
+boot: auto
+host_network: false
+map:
+  - addon_config:rw
+ports:
+  "7125/tcp": 7125
+  "7126/tcp": 7126
+  "7127/tcp": 7127
+  "7128/tcp": 7128
+  "7129/tcp": 7129
+  "7130/tcp": 7130
+ports_description:
+  "7125/tcp": "Bridge / Moonraker API - printer 1 (point OrcaSlicer here)"
+  "7126/tcp": "Bridge / Moonraker API - printer 2 (multi-printer)"
+  "7127/tcp": "Bridge / Moonraker API - printer 3 (multi-printer)"
+  "7128/tcp": "Bridge / Moonraker API - printer 4 (multi-printer)"
+  "7129/tcp": "Bridge / Moonraker API - printer 5 (multi-printer)"
+  "7130/tcp": "Bridge / Moonraker API - printer 6 (multi-printer)"
+webui: "http://[HOST]:[PORT:7125/tcp]"
+# Only the printer connection is managed here (add-on options are the source of
+# truth and are re-applied on every restart). All other settings - AMS/print
+# behaviour, Spoolman, filament profiles, dry presets, multi-printer - are
+# managed in the KX-Bridge web UI and persisted to /config/config.ini.
+options:
+  printer_ip: ""
+  mqtt_port: 9883
+  mqtt_username: ""
+  mqtt_password: ""
+  device_id: ""
+  mode_id: "20030"
+  bridge_host_ip: ""
+schema:
+  printer_ip: "str?"
+  mqtt_port: "int(1,65535)"
+  mqtt_username: "str?"
+  mqtt_password: "password?"
+  device_id: "str?"
+  mode_id: "str?"
+  bridge_host_ip: "str?"

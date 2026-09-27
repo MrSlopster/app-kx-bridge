@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KX-Bridge</title>
+<link rel="stylesheet" href="/kx/ui/style.css">
+<link rel="stylesheet" href="/kx/ui/lib/pickr-nano.min.css">
+<link rel="stylesheet" href="/kx/ui/lib/gridstack.min.css">
+<script src="/kx/ui/lib/pickr.min.js"></script>
+<script src="/kx/ui/lib/gridstack-all.min.js"></script>
+<body>
+
+<div id="conn-error-banner" style="display:none;background:#c0392b;color:#fff;padding:10px 18px;font-size:14px;text-align:center;position:sticky;top:0;z-index:999;"></div>
+<div id="pause-msg-banner" style="display:none;background:#b8860b;color:#fff;padding:10px 18px;font-size:14px;text-align:center;position:sticky;top:0;z-index:997;"></div>
+<div id="file-ready-banner" style="display:none;background:#1a6e3c;color:#fff;padding:10px 18px;font-size:14px;text-align:center;position:sticky;top:0;z-index:998;display:none;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap">
+  <span>📄 <span id="file-ready-name"></span></span>
+  <button id="file-ready-btn" onclick="startReadyFile()"
+    style="padding:5px 16px;background:#fff;color:#1a6e3c;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px"></button>
+  <button id="file-slots-btn" onclick="startReadyFileWithSlots()"
+    style="padding:5px 16px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.5);border-radius:6px;font-weight:700;cursor:pointer;font-size:13px"></button>
+  <button id="file-cancel-btn" onclick="cancelReadyFile()"
+    style="padding:5px 16px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.5);border-radius:6px;font-weight:700;cursor:pointer;font-size:13px"></button>
+</div>
+
+<header>
+  <div class="logo">⬡ KX-Bridge</div>
+  <div style="flex:1"></div>
+  <div id="printer-dropdown-wrap" style="display:none;position:relative">
+    <button id="printer-dropdown-btn" onclick="togglePrinterDropdown()" style="background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--txt);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px">
+      <span id="h-pname">Anycubic Kobra X</span><span style="opacity:.5">▾</span>
+    </button>
+    <div id="printer-dropdown-menu" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;min-width:200px;z-index:200;box-shadow:0 4px 16px #0006;overflow:hidden">
+    </div>
+  </div>
+  <div id="h-pname-single" class="hname">Anycubic Kobra X</div>
+  <span id="h-version" style="font-size:11px;opacity:.5;margin-left:6px"></span>
+  <button id="h-power-btn" class="h-power-btn" style="display:none;margin-left:10px" onclick="toggleHeaderPower()" title="Steckdose">
+    🔌 <span id="h-power-lbl">An</span>
+  </button>
+  <div class="hbadge" id="h-badge"><span class="dot"></span><span id="h-state">Standby</span></div>
+  <button class="theme-btn" onclick="toggleTheme()">☀ / ☾</button>
+  <button class="theme-btn" onclick="showPanel('settings')" id="settings-btn" title="Einstellungen">⚙</button>
+  <button class="conn-btn disconnected" id="conn-btn" onclick="toggleConnection()">⚡ Verbinden</button>
+</header>
+
+<!-- ═══ SETTINGS MODAL ═══ -->
+<!-- Settings-Modal entfernt — jetzt #panel-settings (Master-Detail im Main-Bereich) -->
+
+<!-- ═══ AMS SLOT EDIT DIALOG ═══ -->
+<div class="modal-overlay" id="slot-edit-modal" onclick="if(event.target===this)closeSlotEdit()">
+  <div class="modal-box" style="max-width:340px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <span class="modal-title" id="slot-edit-title"></span>
+      <button onclick="closeSlotEdit()" style="background:none;border:none;color:var(--txt2);font-size:20px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:12px">
+      <div id="slot-edit-preview" style="width:56px;height:56px;border-radius:50%;border:3px solid rgba(255,255,255,.2);flex-shrink:0;margin-top:4px"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;color:var(--txt2);margin-bottom:6px" id="lbl-slot-color"></div>
+        <!-- Pickr anchor — JS mounts the picker here -->
+        <div id="slot-pickr-anchor"></div>
+        <!-- hidden input keeps the hex value for saveSlotEdit() -->
+        <input type="hidden" id="slot-edit-color">
+      </div>
+    </div>
+    <!-- Recent color swatches (max 16, localStorage) -->
+    <div id="slot-color-swatches" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px"></div>
+    <!-- Copy from slot -->
+    <div id="slot-copy-row" style="display:none;margin-bottom:16px">
+      <select id="slot-copy-select"
+        style="width:100%;padding:5px 8px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);font-size:12px;box-sizing:border-box"
+        onchange="slotCopyColor(this)">
+        <option value="" id="lbl-slot-copy-from">Copy color from slot…</option>
+      </select>
+    </div>
+    <div style="margin-bottom:20px">
+      <div style="font-size:11px;color:var(--txt2);margin-bottom:6px" id="lbl-slot-material"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px" id="slot-mat-btns">
+      </div>
+      <input type="text" id="slot-edit-mat"
+        oninput="highlightMatBtn(this.value)"
+        style="margin-top:8px;width:100%;padding:6px 10px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);font-size:13px;box-sizing:border-box">
+    </div>
+    <!-- Orca-Filament-Profil-Override (für AMS-Sync) -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:11px;color:var(--txt2);margin-bottom:6px" id="lbl-slot-profile"></div>
+      <select id="slot-edit-profile"
+        style="width:100%;padding:6px 10px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);font-size:13px;box-sizing:border-box">
+        <option value="" id="slot-profile-default-opt"></option>
+      </select>
+      <div style="font-size:11px;color:var(--txt2);margin-top:4px" id="slot-profile-hint"></div>
+      <a href="#" onclick="event.preventDefault();openProfileImport()"
+        style="display:inline-block;margin-top:6px;font-size:11px;color:var(--accent);text-decoration:none"
+        id="lbl-slot-profile-import">★ Eigene Profile importieren…</a>
+    </div>
+    <button class="btn" id="btn-slot-edit-feed" style="width:100%;margin-bottom:8px" onclick="slotEditFeed()"></button>
+    <button class="modal-save" id="btn-slot-edit-save" onclick="saveSlotEdit()"></button>
+  </div>
+</div>
+
+<!-- ═══ ORCA-PROFILE-IMPORT-DIALOG (Issue #41) ═══ -->
+<div class="modal-overlay" id="profile-import-modal" onclick="if(event.target===this)closeProfileImport()">
+  <div class="modal-box" style="max-width:480px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:16px;font-weight:600" id="profile-import-title">Eigene OrcaSlicer-Profile importieren</div>
+      <button onclick="closeProfileImport()" style="background:none;border:none;color:var(--txt2);font-size:20px;cursor:pointer">×</button>
+    </div>
+    <div style="font-size:12px;color:var(--txt2);margin-bottom:12px;line-height:1.5" id="profile-import-help">
+      Lade ein <b>ZIP</b> deines OrcaSlicer-Filament-Ordners oder einzelne <b>.json</b>-Files hoch.<br>
+      In OrcaSlicer: <i>Help → Show Configuration Folder → user/&lt;id&gt;/filament/</i>
+    </div>
+    <div id="profile-import-drop" style="border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;cursor:pointer;margin-bottom:12px"
+      ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+      ondragleave="this.style.borderColor='var(--border)'"
+      ondrop="event.preventDefault();this.style.borderColor='var(--border)';doProfileImportUpload(event.dataTransfer.files)"
+      onclick="document.getElementById('profile-import-file').click()">
+      <div style="font-size:32px;margin-bottom:8px">⬆</div>
+      <div style="font-size:13px;color:var(--txt2)" id="profile-import-dropmsg">Hierher ziehen oder klicken</div>
+      <input type="file" id="profile-import-file" accept=".zip,.json" multiple
+        style="display:none" onchange="doProfileImportUpload(this.files);this.value=''">
+    </div>
+    <div id="profile-import-status" style="font-size:12px;margin-bottom:12px;min-height:18px"></div>
+    <div style="font-size:11px;color:var(--txt2);margin-bottom:6px" id="profile-import-list-label">Aktuell importiert</div>
+    <div id="profile-import-list" style="max-height:240px;overflow-y:auto;font-size:12px"></div>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <button class="nav-btn active" onclick="showPanel('dashboard')" id="nb-dashboard">
+      <span class="nav-icon">⊞</span><span class="nav-text">Dashboard</span></button>
+    <button class="nav-btn" onclick="showPanel('printers');loadPrinterTab()" id="nb-printers">
+      <span class="nav-icon">🖨</span><span class="nav-text">Drucker</span></button>
+    <button class="nav-btn" onclick="showPanel('store');loadStore()" id="nb-store">
+      <span class="nav-icon">🗂</span><span class="nav-text">Browser</span></button>
+    <button class="nav-btn" onclick="showPanel('console');clearLogBadge()" id="nb-console">
+      <span class="nav-icon">≡</span><span class="nav-text">Konsole</span><span id="log-badge" style="display:none;margin-left:4px;background:var(--err);color:#fff;border-radius:10px;font-size:10px;padding:1px 5px;font-weight:700"></span></button>
+    <button class="nav-btn" onclick="showPanel('settings')" id="nb-settings">
+      <span class="nav-icon">⚙</span><span class="nav-text" id="nav-settings">Einstellungen</span></button>
+  </nav>
+
+  <main>
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="panel active" id="panel-dashboard">
+      <div id="dash-toolbar" style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px">
+        <select id="dash-preset" onchange="applyDashPreset(this.value)" style="display:none;padding:4px 8px;font-size:12px;background:var(--raised);color:var(--txt);border:1px solid var(--border);border-radius:6px">
+          <option value="standard" id="dash-preset-standard">Standard</option>
+          <option value="wide89" id="dash-preset-wide89">Desktop breit</option>
+        </select>
+        <button id="dash-preset-delete-btn" onclick="deleteCurrentDashPreset()" style="display:none;padding:4px 10px;font-size:12px;background:var(--raised);color:var(--err);border:1px solid var(--border);border-radius:6px;cursor:pointer">🗑</button>
+        <button id="dash-preset-save-btn" onclick="saveCurrentAsDashPreset()" style="display:none;padding:4px 10px;font-size:12px;background:var(--raised);color:var(--txt2);border:1px solid var(--border);border-radius:6px;cursor:pointer">💾 <span id="dash-lbl-save-preset">Als Preset speichern</span></button>
+        <button id="dash-reset-btn" onclick="resetDashLayout()" style="display:none;padding:4px 10px;font-size:12px;background:var(--raised);color:var(--txt2);border:1px solid var(--border);border-radius:6px;cursor:pointer">↺ <span id="dash-lbl-reset">Zurücksetzen</span></button>
+        <button id="dash-edit-btn" onclick="toggleDashEdit()" style="padding:4px 10px;font-size:12px;background:var(--raised);color:var(--txt2);border:1px solid var(--border);border-radius:6px;cursor:pointer">🖉 <span id="dash-lbl-edit">Dashboard anpassen</span></button>
+      </div>
+      <div class="grid-stack" id="dash-grid">
+        <!-- Kamera -->
+        <div class="card" id="card-camera" data-card="camera" gs-w="12" gs-h="7">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="card-title" style="margin-bottom:0"><span>📷</span> <span id="d-card-cam">Kamera</span></div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span id="d-lbl-light" style="font-size:12px;color:var(--txt2)">💡 Licht</span>
+              <label class="toggle">
+                <input type="checkbox" id="d-light-toggle" onchange="setLight()">
+                <span class="toggle-track"></span>
+                <span class="toggle-thumb"></span>
+              </label>
+            </div>
+          </div>
+          <div class="cam-wrap" id="cam-wrap">
+            <div class="cam-placeholder" id="cam-placeholder"><span id="cam-placeholder-txt">📷 Kamera nicht gestartet</span></div>
+            <div class="cam-spinner" id="cam-spinner"></div>
+            <img id="cam-img" draggable="false" style="display:none;width:100%;height:auto" alt="Kamera">
+            <div class="cam-overlay" id="cam-overlay" style="display:none">
+              <div style="font-size:12px;color:#fff" id="cam-fname"></div>
+            </div>
+            <button class="cam-toggle" onclick="toggleCam()" id="cam-toggle-btn">▶ Kamera</button>
+            <button class="cam-toggle" onclick="resetCamera()" id="cam-reset-btn" style="display:none;margin-left:4px" title="Kamera-Stream neu verbinden (nach 429-Sperre)">↺</button>
+          </div>
+        </div>
+
+        <!-- Fortschritt -->
+        <div class="card" id="card-progress" data-card="progress" gs-w="12" gs-h="6">
+          <div class="card-title"><span>◉</span> <span id="d-card-progress">Fortschritt</span></div>
+          <img id="d-thumbnail" src="" alt="" style="display:none;width:100%;max-height:160px;object-fit:contain;border-radius:8px;background:#111;margin-bottom:10px">
+          <div class="pct-big"><span id="d-pct">0</span><small>%</small></div>
+          <div style="display:flex;align-items:center;gap:10px;margin:8px 0">
+            <div class="progress-bar" style="flex:1;margin:0"><div class="progress-fill" id="d-pbar" style="width:0%"></div></div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+              <div class="time-block" style="padding:6px 10px;min-width:72px;text-align:center">
+                <div class="time-label" id="d-lbl-layers"></div>
+                <div class="time-val" style="font-size:16px" id="d-layers">–</div>
+              </div>
+              <div class="time-block" style="padding:4px 10px;min-width:72px;text-align:center">
+                <div class="time-label" id="d-lbl-zpos">Z</div>
+                <div class="time-val" style="font-size:13px" id="d-zpos">–</div>
+              </div>
+            </div>
+          </div>
+          <div class="time-grid">
+            <div class="time-block">
+              <div class="time-label" id="d-lbl-elapsed"></div>
+              <div class="time-val" id="d-elapsed">–</div>
+            </div>
+            <div class="time-block" id="d-slicer-row" style="display:none">
+              <div class="time-label" id="d-slicer-label"></div>
+              <div class="time-val" id="d-slicer-time">–</div>
+            </div>
+            <div class="time-block" style="color:var(--acc)">
+              <div class="time-label" id="d-lbl-remain"></div>
+              <div class="time-val" id="d-remain" style="color:var(--acc)">–</div>
+            </div>
+          </div>
+          <div class="fname" id="d-fname" title="" style="margin-top:6px">–</div>
+          <div class="ctrl-btns" id="d-ctrl-btns" style="margin-top:12px;display:none">
+            <button class="btn btn-pause btn-sm" id="d-btn-pause" onclick="togglePauseResume()">⏸ Pause</button>
+            <button class="btn btn-skip btn-sm" id="d-btn-skip" onclick="openSkipDialog()" style="display:none">✂ <span id="d-btn-skip-label">Objekte</span></button>
+            <button class="btn btn-cancel btn-sm" id="d-btn-cancel" onclick="confirmCancel()">✕ Stopp</button>
+          </div>
+          <!-- Aktionen für eine geladene, aber nicht laufende Datei (Issue #55) -->
+          <div class="ctrl-btns" id="d-idle-btns" style="margin-top:12px;display:none">
+            <button class="btn btn-accent btn-sm" id="d-idle-print" onclick="startIdleFile()">▶ <span id="d-idle-print-lbl">Drucken</span></button>
+            <button class="btn btn-sm" id="d-idle-slots" onclick="startIdleFileWithSlots()" style="background:var(--raised);color:var(--txt)">⚙ <span id="d-idle-slots-lbl">Slots zuordnen</span></button>
+            <button class="btn btn-cancel btn-sm" id="d-idle-clear" onclick="clearIdleFile()">✕ <span id="d-idle-clear-lbl">Leeren</span></button>
+          </div>
+        </div>
+
+        <!-- Temperatursteuerung + Verlauf -->
+        <div class="card" id="card-temps" data-card="temps" gs-w="6" gs-h="7">
+          <div class="card-title"><span>⊙</span> <span id="d-card-temps">Temperaturen</span></div>
+          <div class="temp-card-inner">
+            <div class="temp-block">
+              <div class="temp-label" id="d-lbl-nozzle">Nozzle</div>
+              <div class="temp-row">
+                <div class="temp-val" id="d-nt">–</div>
+                <div class="temp-unit">°C</div>
+              </div>
+              <div class="temp-target">→ <span id="d-nt-t">0</span>°C</div>
+              <div class="progress-bar" style="margin:8px 0 0">
+                <div class="progress-fill" id="d-ntbar" style="width:0%;background:linear-gradient(90deg,var(--accent2),#ffb020)"></div>
+              </div>
+              <div class="temp-edit" style="margin-top:10px">
+                <input type="number" class="temp-input" id="p-nozzle-inp" placeholder="Ziel" min="0" max="300" style="flex:1">
+                <button class="btn btn-sm btn-accent" onclick="setNozzle()"><span class="lbl-set">Set</span></button>
+                <button class="btn btn-sm" style="background:var(--raised);color:var(--txt)" onclick="document.getElementById('p-nozzle-inp').value=0;setNozzle()"><span class="lbl-off">Aus</span></button>
+              </div>
+            </div>
+            <div class="temp-block">
+              <div class="temp-label" id="d-lbl-bed">Bett</div>
+              <div class="temp-row">
+                <div class="temp-val" id="d-bt">–</div>
+                <div class="temp-unit">°C</div>
+              </div>
+              <div class="temp-target">→ <span id="d-bt-t">0</span>°C</div>
+              <div class="progress-bar" style="margin:8px 0 0">
+                <div class="progress-fill" id="d-btbar" style="width:0%;background:linear-gradient(90deg,#ff6b35,var(--warn))"></div>
+              </div>
+              <div class="temp-edit" style="margin-top:10px">
+                <input type="number" class="temp-input" id="p-bed-inp" placeholder="Ziel" min="0" max="120" style="flex:1">
+                <button class="btn btn-sm btn-accent" onclick="setBed()"><span class="lbl-set">Set</span></button>
+                <button class="btn btn-sm" style="background:var(--raised);color:var(--txt)" onclick="document.getElementById('p-bed-inp').value=0;setBed()"><span class="lbl-off">Aus</span></button>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:14px">
+            <div style="font-size:10px;color:var(--txt2);margin-bottom:4px" id="d-chart-label">Verlauf (letzte 60 Messungen)</div>
+            <canvas id="d-chart" width="800" height="120" style="width:100%;height:120px;background:var(--raised);border-radius:8px"></canvas>
+          </div>
+        </div>
+
+        <!-- Achsensteuerung -->
+        <div class="card" id="card-motion" data-card="motion" gs-w="6" gs-h="7">
+          <div class="card-title"><span>✛</span> <span id="ptitle-motion-xy">Achsensteuerung</span></div>
+          <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+            <!-- XY -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <div class="joypad">
+                <div></div>
+                <button class="joy" onclick="move(1,1,getStep())" title="Y+">▲</button>
+                <div></div>
+                <button class="joy" onclick="move(0,-1,getStep())" title="X−">◀</button>
+                <div></div>
+                <button class="joy" onclick="move(0,1,getStep())" title="X+">▶</button>
+                <div></div>
+                <button class="joy" onclick="move(1,-1,getStep())" title="Y−">▼</button>
+                <div></div>
+              </div>
+              <button class="btn btn-sm" style="background:var(--raised);color:var(--txt);width:100%" onclick="homeXY()"><span class="lbl-home-xy">Home XY</span></button>
+            </div>
+            <!-- Z -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <div class="joypad" style="grid-template-columns:52px;grid-template-rows:repeat(2,52px)">
+                <button class="joy" onclick="move(2,1,getStep())" title="Z+">▲</button>
+                <button class="joy" onclick="move(2,-1,getStep())" title="Z−">▼</button>
+              </div>
+              <button class="btn btn-sm" style="background:var(--raised);color:var(--txt);width:100%" onclick="homeZ()"><span class="lbl-home-z">Home Z</span></button>
+            </div>
+          </div>
+          <!-- Einheitliche Step-Size -->
+          <div style="display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap">
+            <div class="step-btns" style="margin-top:0">
+              <button class="step-btn" onclick="setStep(this,0.1)">0.1</button>
+              <button class="step-btn active" onclick="setStep(this,1)">1</button>
+              <button class="step-btn" onclick="setStep(this,5)">5</button>
+              <button class="step-btn" onclick="setStep(this,10)">10</button>
+            </div>
+            <input id="step-custom" type="number" min="0.1" max="260" step="0.1"
+              placeholder="mm"
+              style="width:60px;padding:4px 6px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--raised);color:var(--txt);text-align:center"
+              oninput="setStepCustom(this)">
+          </div>
+          <!-- Globale Befehle zentriert -->
+          <div style="display:flex;justify-content:center;gap:8px;margin-top:10px">
+            <button class="btn btn-sm btn-accent" onclick="homeAll()"><span class="lbl-home-all">Home All</span></button>
+            <button class="btn btn-sm" style="background:var(--raised);color:var(--txt)" onclick="disableMotors()"><span class="lbl-disable-motors">Motors Off</span></button>
+          </div>
+        </div>
+
+        <!-- Print Speed -->
+        <div class="card" id="card-speed" data-card="speed" gs-w="6" gs-h="3">
+          <div class="card-title"><span>🏎</span> <span id="d-card-speed">Druckgeschwindigkeit</span></div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="spd-btn" id="d-spd-1" onclick="setSpeed(1)">
+              <span class="spd-icon">🐢</span>
+              <span id="d-spd-lbl-1">Leise</span>
+            </button>
+            <button class="spd-btn spd-active" id="d-spd-2" onclick="setSpeed(2)">
+              <span class="spd-icon">⚡</span>
+              <span id="d-spd-lbl-2">Normal</span>
+            </button>
+            <button class="spd-btn" id="d-spd-3" onclick="setSpeed(3)">
+              <span class="spd-icon">🚀</span>
+              <span id="d-spd-lbl-3">Sport</span>
+            </button>
+          </div>
+          <div class="spd-bar" style="margin-top:12px">
+            <div class="spd-bar-fill" id="d-spd-bar" style="width:50%"></div>
+          </div>
+        </div>
+
+        <!-- Lüfter -->
+        <div class="card" id="card-fan" data-card="fan" gs-w="6" gs-h="3">
+          <div class="card-title"><span>🌀</span> <span id="d-card-lightfan">Lüfter</span></div>
+          <div class="slider-row">
+            <input type="range" class="slider" min="0" max="100" value="0" id="d-fan" oninput="document.getElementById('d-fan-val').textContent=this.value" onchange="setFan()">
+            <span class="slider-val" id="d-fan-val">0</span>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm" style="background:var(--raised);color:var(--txt)" onclick="quickFan(0)">Aus</button>
+            <button class="btn btn-sm" style="background:var(--raised);color:var(--txt)" onclick="quickFan(25)">25%</button>
+            <button class="btn btn-sm" style="background:var(--raised);color:var(--txt)" onclick="quickFan(50)">50%</button>
+            <button class="btn btn-sm" style="background:var(--raised);color:var(--txt)" onclick="quickFan(75)">75%</button>
+            <button class="btn btn-sm btn-accent" onclick="quickFan(100)">100%</button>
+          </div>
+        </div>
+
+        <!-- AMS -->
+        <div class="card" id="d-ams-card" data-card="ams" gs-w="12" gs-h="4">
+          <div class="card-title"><span>◫</span> <span id="d-card-ams">Filament</span></div>
+          <div class="ams-slots" id="ams-slots">
+            <div style="grid-column:1/-1;text-align:center;color:var(--txt2);padding:20px" id="ams-no-data">Keine AMS-Daten empfangen</div>
+          </div>
+        </div>
+      </div>
+      <!-- ACE-Trocknung: außerhalb des GridStack-Grids, per Drucker-State eingeblendet -->
+      <div id="d-ace-dry-wrap" class="grid" style="display:none;margin-top:16px">
+        <div id="d-ace-dry-grid" style="display:contents"></div>
+      </div>
+      <div id="dash-hidden-bar"></div>
+    </div>
+
+    <!-- ═══ CONSOLE ═══ -->
+    <!-- ═══ DRUCKER ═══ -->
+    <div class="panel" id="panel-printers">
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span id="printers-panel-title">🖨 Drucker</span>
+          <div style="display:flex;gap:8px">
+            <button onclick="openAddPrinterDialog()" style="font-size:12px;padding:4px 12px;background:var(--accent);border:none;border-radius:6px;color:#fff;cursor:pointer;font-weight:600">+ <span id="add-printer-btn-label">Drucker hinzufügen</span></button>
+            <button onclick="loadPrinterTab()" style="font-size:12px;padding:4px 12px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt2);cursor:pointer">↻</button>
+          </div>
+        </div>
+        <div id="printers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px"></div>
+      </div>
+    </div>
+
+    <!-- ═══ GCODE STORE ═══ -->
+    <div class="panel" id="panel-store">
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span id="store-panel-title">🗂 Datei-Browser</span>
+          <button id="store-refresh-btn" onclick="loadStore()" style="font-size:12px;padding:4px 12px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt2);cursor:pointer">↻ Aktualisieren</button>
+        </div>
+        <div class="browser-subtabs" style="display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border)">
+          <button class="browser-tab active" id="btab-uploaded" onclick="showBrowserTab('uploaded')"
+            style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--txt2);cursor:pointer;font-size:13px">
+            <span id="btab-lbl-uploaded">Hochgeladen</span></button>
+          <button class="browser-tab" id="btab-printer" onclick="showBrowserTab('printer')"
+            style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--txt2);cursor:pointer;font-size:13px">
+            <span id="btab-lbl-printer">Auf dem Drucker</span></button>
+        </div>
+
+        <div id="browser-group-uploaded" class="browser-group active">
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <input id="store-search" type="text" placeholder="🔍 Suche…" oninput="renderStore()"
+              style="flex:1;min-width:140px;padding:6px 10px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);font-size:13px">
+            <select id="store-filter" onchange="renderStore()"
+              style="padding:6px 8px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);font-size:13px">
+              <option value="all" id="sf-all">Alle</option>
+              <option value="completed" id="sf-ok">✓ Erfolgreich</option>
+              <option value="failed" id="sf-err">✗ Fehler</option>
+              <option value="never" id="sf-new">Neu</option>
+            </select>
+            <select id="store-sort" onchange="renderStore()"
+              style="padding:6px 8px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);font-size:13px">
+              <option value="date_desc" id="ss-date">↓ Datum</option>
+              <option value="name_asc" id="ss-name">A–Z Name</option>
+              <option value="duration_asc" id="ss-dur">⏱ Druckzeit</option>
+            </select>
+          </div>
+          <div id="store-upload-zone" onclick="document.getElementById('store-upload-input').click()"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="event.preventDefault();this.classList.remove('drag-over');uploadGcode(event.dataTransfer.files[0])">
+            <input type="file" id="store-upload-input" accept=".gcode,.bgcode"
+              style="display:none" onchange="uploadGcode(this.files[0]);this.value=''">
+            <span id="store-upload-icon">⬆</span>
+            <span id="store-upload-label"><span id="store-upload-label-prefix">GCode hierher ziehen oder </span><u id="store-upload-label-browse">durchsuchen</u></span>
+            <span id="store-upload-status" style="display:none"></span>
+          </div>
+          <div id="store-empty" style="display:none;color:var(--txt2);text-align:center;padding:40px 0;font-size:14px">
+          </div>
+          <div id="store-select-bar" style="display:none;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="store-select-all" onchange="storeToggleSelectAll(this.checked)">
+              <span id="store-lbl-select-all">Alle auswählen</span>
+            </label>
+            <span id="store-selected-count" style="color:var(--txt2);font-size:13px"></span>
+            <button id="store-delete-selected-btn" disabled onclick="storeDeleteSelected()"
+              style="font-size:12px;padding:4px 12px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--err);cursor:pointer">
+              🗑 <span id="store-lbl-delete-selected">Auswahl löschen</span></button>
+            <button onclick="storeExitSelectMode()"
+              style="font-size:12px;padding:4px 12px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt2);cursor:pointer">
+              <span id="store-lbl-exit-select">Abbrechen</span></button>
+          </div>
+          <div id="store-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px"></div>
+        </div>
+
+        <div id="browser-group-printer" class="browser-group">
+          <div id="printer-store-empty" style="display:none;color:var(--txt2);text-align:center;padding:40px 0;font-size:14px">
+          </div>
+          <div id="printer-store-error" style="display:none;color:var(--err);text-align:center;padding:20px 0;font-size:13px">
+          </div>
+          <div id="printer-store-select-bar" style="display:none;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="printer-store-select-all" onchange="printerFileToggleSelectAll(this.checked)">
+              <span id="printer-store-lbl-select-all">Alle auswählen</span>
+            </label>
+            <span id="printer-store-selected-count" style="color:var(--txt2);font-size:13px"></span>
+            <button id="printer-store-delete-selected-btn" disabled onclick="printerFileDeleteSelected()"
+              style="font-size:12px;padding:4px 12px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--err);cursor:pointer">
+              🗑 <span id="printer-store-lbl-delete-selected">Auswahl löschen</span></button>
+            <button onclick="printerFileExitSelectMode()"
+              style="font-size:12px;padding:4px 12px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt2);cursor:pointer">
+              <span id="printer-store-lbl-exit-select">Abbrechen</span></button>
+          </div>
+          <div id="printer-store-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-console">
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span><span>≡</span> <span id="ptitle-console">Ereignis-Log</span></span>
+          <a id="btn-log-dl" href="/api/log/download" download
+             style="font-size:12px;padding:4px 10px;background:var(--raised);border-radius:6px;color:var(--txt2);text-decoration:none">⬇ Download</a>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;align-items:center">
+          <input id="log-filter" type="text" placeholder="Filter…"
+            oninput="renderLog()"
+            style="flex:1;min-width:120px;padding:5px 10px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);font-size:12px;font-family:var(--mono)">
+          <button id="btn-autoscroll" onclick="toggleAutoScroll()"
+            style="font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--accent);color:#fff;cursor:pointer;white-space:nowrap">⬇ Auto</button>
+          <button onclick="consoleLogs=[];renderLog()"
+            style="font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--raised);color:var(--txt2);cursor:pointer">✕ Clear</button>
+        </div>
+        <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--txt2);align-self:center;margin-right:2px">Dir:</span>
+          <button class="log-dir-btn active" id="logdir-all"  onclick="setLogDir('all')"  style="font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer"></button>
+          <button class="log-dir-btn"        id="logdir-rx"   onclick="setLogDir('rx')"   style="font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer">RX</button>
+          <button class="log-dir-btn"        id="logdir-tx"   onclick="setLogDir('tx')"   style="font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer">TX</button>
+          <span style="font-size:11px;color:var(--txt2);align-self:center;margin-left:6px;margin-right:2px" id="log-lbl-level">Level:</span>
+          <button class="log-lvl-btn active" id="loglvl-all"  onclick="setLogLevel('all')"  style="font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer"></button>
+          <button class="log-lvl-btn"        id="loglvl-err"  onclick="setLogLevel('err')"  style="font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer">⛔ Errors</button>
+          <button class="log-lvl-btn"        id="loglvl-warn" onclick="setLogLevel('warn')" style="font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer">⚠ Warn</button>
+          <span style="font-size:11px;color:var(--txt2);align-self:center;margin-left:6px;margin-right:2px">Topic:</span>
+          <button class="log-topic-btn" data-topic="multiColorBox" onclick="setLogTopic('multiColorBox')" style="font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer">AMS</button>
+          <button class="log-topic-btn" data-topic="print"         onclick="setLogTopic('print')"         style="font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer">print</button>
+          <button class="log-topic-btn" data-topic="info"          onclick="setLogTopic('info')"          style="font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer">info</button>
+          <button class="log-topic-btn" data-topic="status"        onclick="setLogTopic('status')"        style="font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer">status</button>
+        </div>
+        <div class="console" id="console-log" style="height:calc(100vh - 260px);min-height:160px" onscroll="onLogScroll()"></div>
+      </div>
+    </div>
+
+    <!-- ═══ EINSTELLUNGEN ═══ -->
+    <div class="panel" id="panel-settings">
+      <div class="settings-wrap">
+        <div class="settings-cats">
+          <button class="set-cat active" id="setcat-connection" onclick="showSettingsCat('connection')"><span>🔌</span> <span id="setcat-lbl-connection">Verbindung</span></button>
+          <button class="set-cat" id="setcat-printer" onclick="showSettingsCat('printer')"><span>🖨</span> <span id="setcat-lbl-printer">Drucker</span></button>
+          <button class="set-cat" id="setcat-display" onclick="showSettingsCat('display')"><span>🎨</span> <span id="setcat-lbl-display">Darstellung</span></button>
+          <button class="set-cat" id="setcat-filament" onclick="showSettingsCat('filament')"><span>🧵</span> <span id="setcat-lbl-filament">Filament</span></button>
+          <button class="set-cat" id="setcat-integrations" onclick="showSettingsCat('integrations')"><span>⚡</span> <span id="setcat-lbl-integrations">Integrationen</span></button>
+          <button class="set-cat" id="setcat-system" onclick="showSettingsCat('system')"><span>⚙</span> <span id="setcat-lbl-system">System</span></button>
+        </div>
+
+        <div class="settings-content">
+          <!-- Verbindung -->
+          <div class="set-group active" id="setgrp-connection">
+            <div class="card">
+              <div class="card-title"><span>🔌</span> <span id="modal-sec-connection">Verbindung</span></div>
+              <div class="modal-field" style="margin-bottom:12px">
+                <label id="lbl-printer-name" style="font-weight:600">Drucker-Name</label>
+                <input type="text" id="s-printer-name" placeholder="z.B. Kobra X Links">
+              </div>
+              <div class="modal-field">
+                <label id="lbl-printer-ip">Drucker-IP</label>
+                <input type="text" id="s-printer-ip" placeholder="192.168.x.x">
+                <small id="lbl-ip-hint" style="color:#f80;display:none"></small>
+              </div>
+              <div class="modal-field">
+                <label id="lbl-mqtt-port">MQTT-Port</label>
+                <input type="number" id="s-mqtt-port" placeholder="9883">
+              </div>
+              <div class="modal-field">
+                <label id="lbl-username">MQTT-Benutzername</label>
+                <input type="text" id="s-username" placeholder="userXXXXXXXX" autocomplete="new-password">
+              </div>
+              <div class="modal-field">
+                <label id="lbl-password">MQTT-Passwort</label>
+                <input type="password" id="s-password" autocomplete="new-password">
+              </div>
+              <div class="modal-field">
+                <label id="lbl-device-id">Device-ID</label>
+                <input type="text" id="s-device-id" placeholder="32 Hex-Zeichen">
+              </div>
+              <div class="modal-field">
+                <label id="lbl-mode-id">Mode-ID</label>
+                <input type="text" id="s-mode-id" placeholder="20030">
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title"><span>🔌</span> <span id="modal-sec-power">Power Switch</span></div>
+              <div class="modal-field">
+                <label id="lbl-power-on-url">Power-On URL</label>
+                <input type="text" id="s-power-on-url" placeholder="http://192.168.x.x/cm?cmnd=Power%20on">
+              </div>
+              <div class="modal-field">
+                <label id="lbl-power-off-url">Power-Off URL</label>
+                <input type="text" id="s-power-off-url" placeholder="http://192.168.x.x/cm?cmnd=Power%20off">
+              </div>
+              <div class="modal-field">
+                <label id="lbl-power-status-url">Status URL</label>
+                <input type="text" id="s-power-status-url" placeholder="http://192.168.x.x/cm?cmnd=Power">
+                <small id="lbl-power-hint" style="color:var(--txt2)"></small>
+              </div>
+              <div class="modal-field" style="flex-direction:row;align-items:center;gap:10px">
+                <input type="checkbox" id="s-power-status-inverted" style="width:auto;margin:0">
+                <label id="lbl-power-status-inverted" style="margin:0;cursor:pointer" for="s-power-status-inverted">Aktuellen Status statt Aktion anzeigen</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Drucker -->
+          <div class="set-group" id="setgrp-printer">
+            <div class="card">
+              <div class="card-title"><span>🖨</span> <span id="modal-sec-print">Druckeinstellungen</span></div>
+              <div class="modal-field">
+                <label id="lbl-default-slot">Standard-Slot (Einfarbdruck)</label>
+                <select id="s-default-slot">
+                  <option value="auto" id="opt-slot-auto">Auto (alle belegten Slots)</option>
+                  <option value="0" id="opt-slot-0">Slot 1</option>
+                  <option value="1" id="opt-slot-1">Slot 2</option>
+                  <option value="2" id="opt-slot-2">Slot 3</option>
+                  <option value="3" id="opt-slot-3">Slot 4</option>
+                </select>
+              </div>
+              <div class="modal-field" style="flex-direction:row;align-items:center;gap:10px">
+                <input type="checkbox" id="s-auto-leveling" style="width:auto;margin:0">
+                <label id="lbl-auto-leveling" style="margin:0;cursor:pointer" for="s-auto-leveling">Auto-Leveling vor Druck</label>
+              </div>
+              <div class="modal-field" style="flex-direction:row;align-items:center;gap:10px">
+                <input type="checkbox" id="s-vibration-compensation" style="width:auto;margin:0">
+                <label id="lbl-vibration-compensation" style="margin:0;cursor:pointer" for="s-vibration-compensation">Resonance compensation before print</label>
+              </div>
+              <div class="modal-field">
+                <label id="lbl-file-ready-mode">Nach Upload: Druckstart-Verhalten</label>
+                <select id="s-file-ready-mode">
+                  <option value="1" id="opt-file-ready-dialog">Print-Dialog</option>
+                  <option value="0" id="opt-file-ready-banner">Print-Leiste</option>
+                </select>
+              </div>
+              <div class="modal-field" style="flex-direction:row;align-items:center;gap:10px">
+                <input type="checkbox" id="s-camera-on-print" style="width:auto;margin:0">
+                <label id="lbl-camera-on-print" style="margin:0;cursor:pointer" for="s-camera-on-print">Kamera bei Druckstart einschalten</label>
+              </div>
+              <div class="modal-field" style="flex-direction:row;align-items:center;gap:10px">
+                <input type="checkbox" id="s-web-upload-warning" style="width:auto;margin:0">
+                <label id="lbl-web-upload-warning" style="margin:0;cursor:pointer" for="s-web-upload-warning">Warnung bei Web-Upload-Druck anzeigen</label>
+              </div>
+              <div class="modal-field" style="flex-direction:row;align-items:center;gap:10px">
+                <input type="checkbox" id="s-delete-printer-file-after-print" style="width:auto;margin:0">
+                <label id="lbl-delete-printer-file-after-print" style="margin:0;cursor:pointer" for="s-delete-printer-file-after-print">Delete file from printer after successful print</label>
+              </div>
+              <small id="lbl-delete-printer-file-after-print-hint" style="color:var(--txt2)"></small>
+            </div>
+          </div>
+
+          <!-- Darstellung -->
+          <div class="set-group" id="setgrp-display">
+            <div class="card">
+              <div class="card-title"><span>🎨</span> <span id="setcat-lbl-display2">Darstellung</span></div>
+              <div class="modal-field">
+                <label id="lbl-set-lang">Sprache</label>
+                <select id="s-lang-select" onchange="setLanguage(this.value)">
+                  <option value="de">Deutsch</option>
+                  <option value="en">English</option>
+                  <option value="es">Espanol</option>
+                  <option value="fr">Français</option>
+                  <option value="it">Italiano</option>
+                  <option value="zh-cn">中文(简体)</option>
+                </select>
+              </div>
+              <div class="modal-field" style="flex-direction:row;align-items:center;gap:10px">
+                <button class="btn btn-sm" style="background:var(--raised);color:var(--txt)" onclick="toggleTheme()"><span id="lbl-set-theme">Hell / Dunkel umschalten</span></button>
+              </div>
+              <div class="modal-field">
+                <label id="lbl-poll-interval">Poll-Intervall (Sekunden)</label>
+                <input type="number" id="s-poll-interval" min="1" max="60" step="1" placeholder="3" oninput="onPollIntervalInput()">
+                <small style="color:var(--txt2)" id="lbl-poll-hint">Wie oft die Bridge den Drucker-Status abfragt</small>
+              </div>
+              <div class="modal-field" style="flex-direction:row;align-items:center;gap:10px">
+                <input type="checkbox" id="s-verbose-http-log" style="width:auto;margin:0">
+                <label id="lbl-verbose-http-log" style="margin:0;cursor:pointer" for="s-verbose-http-log">Log every HTTP request (verbose)</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filament -->
+          <div class="set-group" id="setgrp-filament">
+            <div class="card">
+              <div class="card-title"><span>🧵</span> <span id="modal-sec-orca-profiles">OrcaSlicer-Profile</span></div>
+              <div style="font-size:11px;color:var(--txt2);margin-bottom:8px" id="orca-profiles-hint">
+                Eigene Profile aus OrcaSlicer importieren (User-Dir öffnen via Help → Show Configuration Folder)
+              </div>
+              <div id="orca-profiles-list" style="margin-bottom:8px;font-size:12px;color:var(--txt2)"></div>
+              <button class="btn btn-sm" id="btn-orca-profiles-import" onclick="openProfileImport()"
+                style="background:var(--raised);color:var(--txt)">
+                ⬆ <span id="lbl-orca-profiles-import">Profile importieren</span>
+              </button>
+            </div>
+            <div class="card">
+              <div class="card-title"><span>🎯</span> <span id="lbl-filament-mapping">Filament-Profil-Mapping (pro Slot)</span></div>
+              <div style="font-size:11px;color:var(--txt2);margin-bottom:8px" id="filament-mapping-hint">
+                Festes Orca-Profil pro AMS-Slot. Beim Slicer-Sync sendet die Bridge dieses Profil statt „Generic".
+              </div>
+              <div id="filament-mapping-list"></div>
+              <button class="btn btn-sm" style="background:var(--accent);color:#fff;margin-top:8px" onclick="saveFilamentMapping()"><span id="lbl-filament-mapping-save">Mapping speichern</span></button>
+            </div>
+            <div class="card">
+              <div class="card-title"><span>👁</span> <span id="lbl-visible-vendors">Sichtbare Hersteller (Profil-Dropdown)</span></div>
+              <div style="font-size:11px;color:var(--txt2);margin-bottom:8px" id="visible-vendors-hint">
+                Nur diese Hersteller erscheinen im Slot-Profil-Dropdown. Nichts ausgewählt = alle anzeigen. „Generic" und eigene Profile sind immer sichtbar.
+              </div>
+              <input type="text" id="vendor-filter-search" placeholder="Hersteller suchen…" oninput="renderVendorChecklist()"
+                style="width:100%;padding:6px 10px;margin-bottom:8px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);font-size:12px">
+              <div id="visible-vendors-list" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px"></div>
+              <button class="btn btn-sm" style="background:var(--accent);color:#fff;margin-top:8px" onclick="saveVisibleVendors()"><span id="lbl-visible-vendors-save">Auswahl speichern</span></button>
+            </div>
+            <div class="card" id="spoolman-slot-card" style="display:none">
+              <div class="card-title"><span>🧵</span> <span id="lbl-spoolman-slot-assign">Spoolman — Slot-Zuordnung</span></div>
+              <div style="font-size:11px;color:var(--txt2);margin-bottom:10px" id="lbl-spoolman-slot-hint">Spoolman-Spool pro AMS-Slot zuweisen. Der Verbrauch wird beim Druck automatisch gemeldet.</div>
+              <div id="spoolman-slot-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+              <button class="btn btn-sm" style="background:var(--accent);color:#fff;margin-top:10px" onclick="saveSpoolmanSlots()"><span id="lbl-spoolman-slot-save">Zuordnung speichern</span></button>
+            </div>
+          </div>
+
+          <!-- Integrationen -->
+          <div class="set-group" id="setgrp-integrations">
+            <!-- Spoolman -->
+            <div class="card">
+              <div class="card-title"><span>🧵</span> <span id="modal-sec-spoolman">Spoolman</span></div>
+              <div class="set-row">
+                <label id="lbl-spoolman-url">Server-URL</label>
+                <input type="text" id="s-spoolman-url" placeholder="http://spoolman:7912" style="width:200px">
+              </div>
+              <div class="set-row">
+                <label id="lbl-spoolman-sync-rate">Sync-Rate (s, 0=Druckende)</label>
+                <input type="number" id="s-spoolman-sync-rate" min="0" max="3600" value="30" style="width:80px">
+              </div>
+              <div id="spoolman-status-row" style="margin-top:6px;font-size:12px;color:var(--txt2)">
+                <span id="spoolman-status-dot">●</span> <span id="spoolman-status-lbl"></span>
+              </div>
+            </div>
+            <!-- Obico -->
+            <div class="card" style="margin-top:10px">
+              <div class="card-title"><span>🕵</span> <span id="modal-sec-obico">Obico</span></div>
+              <div style="font-size:12px;color:var(--txt2);line-height:1.6" id="obico-info-box">
+                Obico wird über den <code>moonraker-obico</code>-Container konfiguriert.<br>
+                Config-Datei: <code id="obico-cfg-path">/mnt/dockerdata/KobraXStack/moonraker-obico/moonraker-obico.cfg</code>
+              </div>
+            </div>
+          </div>
+
+          <!-- System -->
+          <div class="set-group" id="setgrp-system">
+            <div class="card">
+              <div class="card-title"><span>⚙</span> <span id="modal-sec-version">Version</span></div>
+              <div class="update-row">
+                <span id="s-version-label" style="font-size:13px;color:var(--txt)">–</span>
+                <button class="btn btn-sm" style="background:var(--raised);color:var(--txt)" onclick="checkUpdate()" id="btn-update-check">🔄 <span id="lbl-update-check">Auf Updates prüfen</span></button>
+              </div>
+              <div class="update-status" id="update-status" style="margin-top:6px"></div>
+              <button class="btn btn-sm btn-accent" id="btn-update-apply" style="display:none;margin-top:8px" onclick="applyUpdate()">
+                <span id="lbl-update-apply">Jetzt installieren</span>
+              </button>
+              <div id="update-changelog" style="display:none;margin-top:10px;background:var(--raised);border-radius:6px;padding:10px;font-size:11px;font-family:var(--mono);color:var(--txt2);white-space:pre-wrap;max-height:180px;overflow-y:auto;line-height:1.6"></div>
+            </div>
+          </div>
+
+          <button class="modal-save" onclick="saveSettings()" id="btn-save-settings" style="margin-top:14px">Speichern &amp; Neustart</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="bottom-nav">
+  <button class="bnav-btn active" onclick="showPanel('dashboard')" id="bnb-dashboard"><span class="bnav-icon">⊞</span>Dashboard</button>
+  <button class="bnav-btn" onclick="showPanel('printers');loadPrinterTab()" id="bnb-printers"><span class="bnav-icon">🖨</span>Drucker</button>
+  <button class="bnav-btn" onclick="showPanel('store');loadStore()" id="bnb-store"><span class="bnav-icon">🗂</span>Browser</button>
+  <button class="bnav-btn" onclick="showPanel('console');clearLogBadge()" id="bnb-console"><span class="bnav-icon">≡</span>Log<span id="log-badge-bot" style="display:none;margin-left:3px;background:var(--err);color:#fff;border-radius:10px;font-size:10px;padding:1px 4px;font-weight:700"></span></button>
+  <button class="bnav-btn" onclick="showPanel('settings')" id="bnb-settings"><span class="bnav-icon">⚙</span>Setup</button>
+</nav>
+
+
+<!-- Web-Upload-Verify-Dialog -->
+<div class="modal-overlay" id="store-web-verify-dialog" onclick="if(event.target===this)closeStoreWebVerifyDialog()">
+  <div class="modal-box" style="max-width:420px;width:100%">
+    <div class="modal-header" style="margin-bottom:14px">
+      <span class="modal-title" id="store-web-verify-title">Datei verifizieren</span>
+      <button onclick="closeStoreWebVerifyDialog()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt2)">✕</button>
+    </div>
+    <p id="store-web-verify-msg" style="font-size:13px;color:var(--txt);margin-bottom:12px">Bitte bestätige, dass diese Datei für den Anycubic Kobra X erstellt wurde.</p>
+    <div id="store-web-verify-status" style="font-size:12px;color:var(--txt2);min-height:16px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="store-web-verify-abort" onclick="closeStoreWebVerifyDialog()" style="padding:8px 16px;background:var(--raised);border:1px solid var(--border);border-radius:8px;color:var(--txt);cursor:pointer">Abbrechen</button>
+      <button id="store-web-verify-confirm" onclick="confirmStoreWebVerify()" style="padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Bestätigen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Filament-Slot-Dialog -->
+<div class="modal-overlay" id="filament-dialog" onclick="if(event.target===this)closeFilamentDialog()">
+  <div class="modal-box" style="max-width:380px;width:100%">
+    <div class="modal-header" style="margin-bottom:14px">
+      <span class="modal-title" id="fd-title" style="font-size:14px;word-break:break-all"></span>
+      <button onclick="closeFilamentDialog()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt2)">✕</button>
+    </div>
+    <p id="fd-slots-hint" style="font-size:12px;color:var(--txt2);margin-bottom:10px">GCode-Kanal → AMS-Slot zuweisen:</p>
+    <div id="fd-mismatch-warn" style="display:none;margin-bottom:10px;padding:8px 10px;background:rgba(255,160,0,.12);border:1px solid rgba(255,160,0,.4);border-radius:8px;font-size:11px;color:#ffa000"></div>
+    <div id="fd-slots" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+    <div id="fd-objects-section" style="display:none;margin-bottom:16px">
+      <button type="button" id="fd-objects-toggle" onclick="toggleFdObjects()"
+        style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;background:var(--raised);border:1px solid var(--border);border-radius:8px;color:var(--txt);cursor:pointer;font-size:12px;text-align:left">
+        <span id="fd-objects-arrow" style="font-size:10px;transition:transform .15s">▶</span>
+        <span>✂ <span id="fd-objects-toggle-lbl">Objekte überspringen</span></span>
+        <span id="fd-objects-count" style="margin-left:auto;color:var(--txt2);font-weight:600"></span>
+      </button>
+      <div id="fd-objects-body" style="display:none;margin-top:8px">
+        <div id="fd-objects-svg" style="display:none;background:var(--raised);border:1px solid var(--border);border-radius:8px;padding:6px;margin-bottom:8px;text-align:center"></div>
+        <div id="fd-objects" style="display:flex;flex-direction:column;gap:6px;max-height:140px;overflow-y:auto"></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;padding:10px 12px;background:var(--raised);border-radius:8px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--txt2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em" id="fd-options-title">Druckoptionen</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="fd-auto-leveling" style="width:auto;margin:0">
+        <label for="fd-auto-leveling" style="margin:0;cursor:pointer;font-size:13px" id="fd-lbl-auto-leveling">Auto-Leveling</label>
+      </div>
+    </div>
+    <div id="fd-spoolman-section" style="display:none;margin-bottom:16px;border-top:1px solid var(--border);padding-top:12px">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+        <span id="fd-spoolman-lbl">🧵 Spoolman</span>
+        <span id="fd-spoolman-loading" style="display:none;font-size:10px">…</span>
+      </p>
+      <div id="fd-spoolman-rows" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="fd-cancel" onclick="closeFilamentDialog()" style="padding:8px 16px;background:var(--raised);border:1px solid var(--border);border-radius:8px;color:var(--txt);cursor:pointer">Abbrechen</button>
+      <button id="fd-print" onclick="confirmFilamentPrint()" style="padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">▶ Drucken</button>
+    </div>
+  </div>
+</div>
+<!-- Drucker-hinzufügen-Dialog -->
+<div class="modal-overlay" id="add-printer-dialog" onclick="if(event.target===this)closeAddPrinterDialog()">
+  <div class="modal-box" style="max-width:380px;width:100%">
+    <div class="modal-header" style="margin-bottom:14px">
+      <span class="modal-title" id="apd-title">Drucker hinzufügen</span>
+      <button onclick="closeAddPrinterDialog()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt2)">✕</button>
+    </div>
+    <label id="apd-lbl-ip" style="display:block;font-size:12px;color:var(--txt2);margin-bottom:4px">Drucker-IP</label>
+    <input type="text" id="apd-ip" placeholder="192.168.1.100" style="width:100%;box-sizing:border-box;padding:8px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);margin-bottom:10px">
+    <label id="apd-lbl-name" style="display:block;font-size:12px;color:var(--txt2);margin-bottom:4px">Name (optional)</label>
+    <input type="text" id="apd-name" placeholder="z.B. Kobra X Wohnzimmer" style="width:100%;box-sizing:border-box;padding:8px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);margin-bottom:6px">
+    <div id="apd-status" style="font-size:12px;margin:8px 0;min-height:16px;color:var(--txt2)"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="apd-cancel" onclick="closeAddPrinterDialog()" style="padding:8px 16px;background:var(--raised);border:1px solid var(--border);border-radius:8px;color:var(--txt);cursor:pointer">Abbrechen</button>
+      <button id="apd-confirm" onclick="confirmAddPrinter()" style="padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Hinzufügen</button>
+    </div>
+  </div>
+</div>
+<!-- Mid-Print Skip-Dialog -->
+<div class="modal-overlay" id="skip-dialog" onclick="if(event.target===this)closeSkipDialog()">
+  <div class="modal-box" style="max-width:420px;width:100%">
+    <div class="modal-header" style="margin-bottom:14px">
+      <span class="modal-title" id="skip-title">✂ Objekte überspringen</span>
+      <button onclick="closeSkipDialog()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt2)">✕</button>
+    </div>
+    <p id="skip-hint" style="font-size:12px;color:var(--txt2);margin-bottom:10px">Objekte abwählen, die nicht weiter gedruckt werden sollen:</p>
+    <div id="skip-svg" style="display:none;background:var(--raised);border:1px solid var(--border);border-radius:8px;padding:6px;margin-bottom:10px;text-align:center"></div>
+    <div id="skip-list" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;margin-bottom:12px"></div>
+    <div id="skip-status" style="font-size:12px;color:var(--txt2);min-height:16px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="closeSkipDialog()" style="padding:8px 16px;background:var(--raised);border:1px solid var(--border);border-radius:8px;color:var(--txt);cursor:pointer">Abbrechen</button>
+      <button id="skip-confirm" onclick="confirmSkip()" style="padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Überspringen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACE Dryer Temp/Time Settings Dialog -->
+<div class="modal-overlay" id="ace-dry-dialog" onclick="if(event.target===this)closeAceDryDialog()">
+  <div class="modal-box" style="max-width:560px;width:100%">
+    <div class="modal-header" style="margin-bottom:10px">
+      <span class="modal-title" id="ace-dry-dialog-title">Dryer Temp/Time Settings</span>
+      <button onclick="closeAceDryDialog()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt2)">✕</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <label id="ace-dry-dialog-temp-label" style="min-width:190px;font-size:12px;color:var(--txt)">Temperature (30-80°C)</label>
+      <input id="ace-dry-dialog-temp" type="number" min="30" max="80" step="1"
+        oninput="aceDryDialogInputsChanged()"
+        style="width:130px;padding:8px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);text-align:center" value="45">
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <label id="ace-dry-dialog-time-label" style="min-width:190px;font-size:12px;color:var(--txt)">Rem. Time (h:m:s)</label>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input id="ace-dry-dialog-h" type="number" min="0" max="24" step="1" value="4"
+          oninput="aceDryDialogInputsChanged()"
+          style="width:70px;padding:8px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);text-align:center">
+        <span style="color:var(--txt2)">:</span>
+        <input id="ace-dry-dialog-m" type="number" min="0" max="59" step="1" value="0"
+          oninput="aceDryDialogInputsChanged()"
+          style="width:70px;padding:8px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);text-align:center">
+        <span style="color:var(--txt2)">:</span>
+        <input id="ace-dry-dialog-s" type="number" min="0" max="59" step="1" value="0"
+          oninput="aceDryDialogInputsChanged()"
+          style="width:70px;padding:8px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt);text-align:center">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
+      <button class="ace-dry-preset-btn" data-preset="pla" onclick="aceDryDialogPreset('pla')" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--raised);color:var(--txt2);cursor:pointer">PLA</button>
+      <button class="ace-dry-preset-btn" data-preset="pla_plus" onclick="aceDryDialogPreset('pla_plus')" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--raised);color:var(--txt2);cursor:pointer">PLA+</button>
+      <button class="ace-dry-preset-btn" data-preset="petg" onclick="aceDryDialogPreset('petg')" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--raised);color:var(--txt2);cursor:pointer">PETG</button>
+      <button class="ace-dry-preset-btn" data-preset="tpu" onclick="aceDryDialogPreset('tpu')" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--raised);color:var(--txt2);cursor:pointer">TPU</button>
+      <button class="ace-dry-preset-btn" data-preset="abs_asa" onclick="aceDryDialogPreset('abs_asa')" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--raised);color:var(--txt2);cursor:pointer">ABS / ASA</button>
+      <button class="ace-dry-preset-btn" data-preset="pa_pc" onclick="aceDryDialogPreset('pa_pc')" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--raised);color:var(--txt2);cursor:pointer">PA / PC</button>
+      <button class="ace-dry-preset-btn" data-preset="custom_1" onclick="aceDryDialogPreset('custom_1')" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--raised);color:var(--txt2);cursor:pointer">Custom 1</button>
+      <button class="ace-dry-preset-btn" data-preset="custom_2" onclick="aceDryDialogPreset('custom_2')" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--raised);color:var(--txt2);cursor:pointer">Custom 2</button>
+      <button class="ace-dry-preset-btn" data-preset="custom_3" onclick="aceDryDialogPreset('custom_3')" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--raised);color:var(--txt2);cursor:pointer">Custom 3</button>
+    </div>
+    <div id="ace-dry-dialog-custom-name-row" style="display:none;align-items:center;gap:12px;margin-bottom:14px">
+      <label id="ace-dry-dialog-custom-name-label" style="min-width:190px;font-size:12px;color:var(--txt)">Custom Name</label>
+      <input id="ace-dry-dialog-custom-name" type="text" maxlength="32" oninput="aceDryDialogInputsChanged()"
+        style="width:220px;padding:8px;background:var(--raised);border:1px solid var(--border);border-radius:6px;color:var(--txt)">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button id="ace-dry-dialog-reset-default" onclick="resetAceDryPresetToDefault()" style="display:none;padding:8px 14px;background:var(--raised);border:1px solid var(--border);border-radius:8px;color:var(--txt);cursor:pointer">Reset to Default</button>
+      <button id="ace-dry-dialog-save-preset" onclick="saveAceDryPresetAndRestart()" style="display:none;padding:8px 14px;background:var(--warn);border:1px solid transparent;border-radius:8px;color:#fff;cursor:pointer">Save & Restart</button>
+      <button id="ace-dry-dialog-cancel" onclick="closeAceDryDialog()" style="padding:8px 14px;background:var(--raised);border:1px solid var(--border);border-radius:8px;color:var(--txt);cursor:pointer">Cancel</button>
+      <button id="ace-dry-dialog-confirm" onclick="confirmAceDryDialog()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Confirm</button>
+    </div>
+  </div>
+</div>
+<script src="/kx/ui/app.js"></script></head>
+<footer style="text-align:center;padding:12px;font-size:11px;color:var(--txt2);border-top:1px solid var(--border);margin-top:auto">
+  &copy; ViewIT 2026
+</footer>
+</body>
+</html>
