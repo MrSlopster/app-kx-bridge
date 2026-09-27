@@ -5,8 +5,7 @@ slug: kx_bridge
 description: >-
   Moonraker-compatible bridge for the Anycubic Kobra X. Control the printer
   from OrcaSlicer/Fluidd/Mainsail-style clients over MQTT - no Klipper, no Pi.
-url: "https://gitea.it-drui.de/viewit/KX-Bridge-Release"
-codenotary: ""
+url: "https://github.com/MrSlopster/app-kx-bridge"
 arch:
   - aarch64
   - amd64
